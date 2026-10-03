@@ -2,7 +2,7 @@ import "../../global.css";
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import { useFonts } from "expo-font";
 
@@ -13,6 +13,8 @@ SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  const [showSplash, setShowSplash] = useState(true);
 
   const [fontsLoaded, fontError] = useFonts({
     SFPro: require("../../assets/fonts/SFPRODISPLAYREGULAR.otf"),
@@ -32,8 +34,11 @@ export default function TabLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
       <AppTabs />
+
+      {showSplash && (
+        <AnimatedSplashOverlay onFinish={() => setShowSplash(false)} />
+      )}
     </ThemeProvider>
   );
 }

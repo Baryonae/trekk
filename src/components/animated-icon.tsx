@@ -1,148 +1,198 @@
-import { Image } from 'expo-image';
-import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { useEffect } from "react";
+import { Modal, StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+type Props = {
+  onFinish?: () => void;
+};
 
-export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
-  const [visible, setVisible] = useState(true);
+export function AnimatedSplashOverlay({ onFinish }: Props) {
+  const scale = useSharedValue(0.8);
+  const logoOpacity = useSharedValue(0);
+  const textOpacity = useSharedValue(0);
+  const containerOpacity = useSharedValue(1);
 
-  if (!visible) return null;
+  useEffect(() => {
+    logoOpacity.value = withTiming(1, {
+      duration: 350,
+    });
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: 1 }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
+    scale.value = withTiming(1, {
+      duration: 550,
+      easing: Easing.out(Easing.cubic),
+    });
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+    textOpacity.value = withDelay(
+      300,
+      withTiming(1, {
+        duration: 350,
+      }),
+    );
 
-  return animate ? (
-    <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.splashOverlay}>
-      {image}
-    </Animated.View>
-  ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={styles.splashOverlay}>
-      {image}
-    </View>
-  );
-}
+    containerOpacity.value = withDelay(
+      1000,
+      withTiming(
+        0,
+        {
+          duration: 350,
+          easing: Easing.inOut(Easing.cubic),
+        },
+        (finished) => {
+          if (finished && onFinish) {
+            runOnJS(onFinish)();
+          }
+        },
+      ),
+    );
+  }, []);
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: scale.value }],
+  }));
 
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+  }));
 
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: containerOpacity.value,
+  }));
 
-export function AnimatedIcon() {
   return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
+    <Modal
+      visible
+      animationType="none"
+      transparent={false}
+      statusBarTranslucent
+      onRequestClose={() => {}}
+    >
+      <Animated.View style={[styles.container, containerStyle]}>
+        {/* Logo */}
+        <Animated.View style={logoStyle}>
+          <View style={styles.logo}>
+            {/* Geometric T */}
+            <View style={styles.tiltedT}>
+              {/* Top bar */}
+              <View style={styles.topBar} />
 
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+              {/* Vertical stem */}
+              <View style={styles.stem} />
+
+              {/* Cut-outs */}
+              <View style={[styles.cut, styles.cutTopLeft]} />
+              <View style={[styles.cut, styles.cutRight]} />
+              <View style={[styles.cut, styles.cutBottom]} />
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* App name */}
+        <Animated.View style={textStyle}>
+          <Animated.Text style={styles.title}>TREKK</Animated.Text>
+        </Animated.View>
       </Animated.View>
-    </View>
+    </Modal>
   );
 }
+
+const PURPLE = "#AE00FF";
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
+
+  logo: {
+    width: 86,
+    height: 86,
+    borderRadius: 27,
+    backgroundColor: PURPLE,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-    zIndex: 100,
+
+  /*
+   * Entire T is tilted as one shape.
+   */
+  tiltedT: {
+    width: 54,
+    height: 54,
+    transform: [{ rotate: "-12deg" }],
+    position: "relative",
   },
-  image: {
-    width: 76,
-    height: 71,
+
+  /*
+   * ━━━━━━━━━━━━━
+   *       T
+   * ━━━━━━━━━━━━━
+   */
+  topBar: {
+    position: "absolute",
+    top: 5,
+    left: 2,
+    width: 52,
+    height: 15,
+    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
   },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
+
+  stem: {
+    position: "absolute",
+    top: 13,
+    left: 20,
+    width: 15,
+    height: 40,
+    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
   },
-  splashOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
+
+  /*
+   * Purple blocks hide sections of the T,
+   * creating the broken/geometric appearance.
+   */
+  cut: {
+    position: "absolute",
+    backgroundColor: PURPLE,
+  },
+
+  cutTopLeft: {
+    top: 5,
+    left: 2,
+    width: 11,
+    height: 9,
+  },
+
+  cutRight: {
+    top: 5,
+    right: 1,
+    width: 10,
+    height: 7,
+  },
+
+  cutBottom: {
+    bottom: 0,
+    left: 20,
+    width: 15,
+    height: 8,
+  },
+
+  title: {
+    marginTop: 18,
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: 6,
   },
 });
